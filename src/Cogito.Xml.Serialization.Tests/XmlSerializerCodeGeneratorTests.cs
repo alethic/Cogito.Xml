@@ -60,6 +60,27 @@ namespace Cogito.Xml.Serialization.Tests
 </xs:schema>
 ");
 
+        static readonly XDocument SimpleSchemaText2 = XDocument.Parse(@"
+<xs:schema
+    xmlns:xs='http://www.w3.org/2001/XMLSchema'
+    xmlns='http://tempuri.org/SimpleSchema'
+    targetNamespace='http://tempuri.org/SimpleSchema'>
+    <xs:element name='WithNested'>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name='Nested'>
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name='Element1' type='xs:string' />
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>
+");
+
         /// <summary>
         /// Loads an individual schema.
         /// </summary>
@@ -77,7 +98,7 @@ namespace Cogito.Xml.Serialization.Tests
         static XmlSchemaSet LoadSchemaSet()
         {
             var s = new XmlSchemaSet();
-            s.Add(LoadSchema(SimpleSchemaText));
+            s.Add(LoadSchema(SimpleSchemaText2));
             s.Compile();
             return s;
         }
@@ -115,8 +136,9 @@ namespace Cogito.Xml.Serialization.Tests
             g.MapNamespace(ns, "GeneratedCode");
             var c = g.GenerateCode();
             var t = c.NormalizeWhitespace().ToFullString();
-        }
+            }
 
     }
 
 }
+    
