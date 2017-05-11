@@ -3,6 +3,7 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
 using System.Xml.Serialization;
+using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Cogito.Xml.Serialization.Tests
@@ -11,6 +12,14 @@ namespace Cogito.Xml.Serialization.Tests
     [TestClass]
     public class XmlSerializerCodeGeneratorTests
     {
+
+        [XmlType(TypeName = "FooType", Namespace = "http://tempuri.org/SimpleSchema")]
+        class FooType
+        {
+
+
+        }
+
 
         static readonly XNamespace ns = "http://tempuri.org/SimpleSchema";
         static readonly XDocument SimpleSchemaText = XDocument.Parse(@"
@@ -94,51 +103,18 @@ namespace Cogito.Xml.Serialization.Tests
         }
 
         [TestMethod]
-        public void Test_can_get_type_name_for_global_type()
+        public void Test_can_get_qname_for_type()
         {
-            var g = new XmlSerializerCodeGenerator(LoadSchemaSet());
-            g.XmlsToClrNamespace[ns] = "GeneratedCode";
-            var n = g.GetTypeName(g.Schemas.GetGlobalType(ns + "Person"));
-            Assert.IsTrue(n == "GeneratedCode.Person");
+            Assert.IsTrue(XmlSerializerCodeGenerator.GetXNameForType(typeof(FooType)) == ns + "FooType");
         }
 
         [TestMethod]
-        public void Test_can_get_type_name_for_global_element()
+        public void Test_can_generate_code()
         {
             var g = new XmlSerializerCodeGenerator(LoadSchemaSet());
-            g.XmlsToClrNamespace[ns] = "GeneratedCode";
-            var n = g.GetTypeName(g.Schemas.GetGlobalElement(ns + "AddressElement"));
-            Assert.IsTrue(n == "GeneratedCode.AddressElement");
-        }
-
-        [TestMethod]
-        public void Test_can_get_type_name_for_particle_element_with_complex_type()
-        {
-            var g = new XmlSerializerCodeGenerator(LoadSchemaSet());
-            g.XmlsToClrNamespace[ns] = "GeneratedCode";
-            var e = (XmlSchemaElement)((XmlSchemaSequence)((XmlSchemaComplexType)g.Schemas.GetGlobalType(ns + "Person")).Particle).Items[0];
-            var n = g.GetTypeName(e);
-            Assert.IsTrue(n == "GeneratedCode.Address");
-        }
-
-        [TestMethod]
-        public void Test_can_get_type_name_for_particle_element_with_element_ref()
-        {
-            var g = new XmlSerializerCodeGenerator(LoadSchemaSet());
-            g.XmlsToClrNamespace[ns] = "GeneratedCode";
-            var e = (XmlSchemaElement)((XmlSchemaSequence)((XmlSchemaComplexType)g.Schemas.GetGlobalType(ns + "WithAddress")).Particle).Items[0];
-            var n = g.GetTypeName(e);
-            Assert.IsTrue(n == "GeneratedCode.AddressElement");
-        }
-
-        [TestMethod]
-        public void Test_can_get_type_name_for_nested_element_with_nested_complex_type()
-        {
-            var g = new XmlSerializerCodeGenerator(LoadSchemaSet());
-            g.XmlsToClrNamespace[ns] = "GeneratedCode";
-            var e = (XmlSchemaElement)((XmlSchemaSequence)((XmlSchemaComplexType)g.Schemas.GetGlobalElement(ns + "WithNested").ElementSchemaType).Particle).Items[0];
-            var n = g.GetTypeName(e);
-            Assert.IsTrue(n == "GeneratedCode.AddressElement");
+            g.MapNamespace(ns, "GeneratedCode");
+            var c = g.GenerateCode();
+            var t = c.NormalizeWhitespace().ToFullString();
         }
 
     }
