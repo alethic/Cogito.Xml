@@ -287,10 +287,44 @@ namespace Cogito.Xml.Serialization
             switch (type.TypeCode)
             {
                 case XmlTypeCode.String:
+                case XmlTypeCode.NormalizedString:
+                case XmlTypeCode.Token:
+                case XmlTypeCode.Name:
+                case XmlTypeCode.Id:
+                case XmlTypeCode.Idref:
                     return TypeSyntax<string>();
+                case XmlTypeCode.Byte:
+                    return TypeSyntax<byte>();
+                case XmlTypeCode.Boolean:
+                    return TypeSyntax<bool>();
+                case XmlTypeCode.Short:
+                    return TypeSyntax<short>();
+                case XmlTypeCode.UnsignedShort:
+                    return TypeSyntax<ushort>();
                 case XmlTypeCode.Int:
                 case XmlTypeCode.Integer:
+                case XmlTypeCode.PositiveInteger:
+                case XmlTypeCode.NegativeInteger:
+                case XmlTypeCode.NonNegativeInteger:
+                case XmlTypeCode.NonPositiveInteger:
                     return TypeSyntax<int>();
+                case XmlTypeCode.UnsignedInt:
+                    return TypeSyntax<uint>();
+                case XmlTypeCode.Long:
+                    return TypeSyntax<long>();
+                case XmlTypeCode.UnsignedLong:
+                    return TypeSyntax<ulong>();
+                case XmlTypeCode.Float:
+                    return TypeSyntax<float>();
+                case XmlTypeCode.Double:
+                    return TypeSyntax<double>();
+                case XmlTypeCode.Decimal:
+                    return TypeSyntax<decimal>();
+                case XmlTypeCode.Date:
+                case XmlTypeCode.DateTime:
+                    return TypeSyntax<DateTime>();
+                case XmlTypeCode.QName:
+                    return TypeSyntax<XName>();
                 case XmlTypeCode.None:
                     return TypeOf(type.QualifiedName);
                 default:
@@ -377,8 +411,17 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         public ClassDeclarationSyntax GenerateClassForSimpleType(XmlSchemaSimpleType type)
         {
-            // basic class
-            return GenerateClass(type.QualifiedName.Name ?? "Generated");
+            var c = GenerateClass(type.QualifiedName.Name ?? "Generated");
+
+            // type inherits from another type
+            if (type.BaseXmlSchemaType != null)
+            {
+                // base type is not a built in type
+                if (!SYSTEM_XMLNS.Contains(type.BaseXmlSchemaType.QualifiedName.Namespace))
+                    c = c.AddBaseListTypes(SimpleBaseType(TypeOf(type.BaseXmlSchemaType)));
+            }
+
+            return c;
         }
 
         /// <summary>
@@ -415,13 +458,19 @@ namespace Cogito.Xml.Serialization
                 return GenerateClassForType(element.ElementSchemaType)
                     .WithIdentifier(Identifier(element.Name));
 
-            // element is an anonymous type
+            // element defines  type
             if (element.SchemaType != null && element.SchemaTypeName.IsEmpty)
-                return GenerateClassForType(element.SchemaType)
-                    .WithIdentifier(Identifier(element.Name))
-                    .AddAttributeLists(AttributeList(SingletonSeparatedList(GenerateXmlRootAttribute(element.QualifiedName))));
+            {
+                var c = GenerateClassForType(element.SchemaType)
+                    .WithIdentifier(Identifier(element.Name));
 
-            return null;
+                if (!string.IsNullOrEmpty(element.QualifiedName.Namespace))
+                    c = c.AddAttributeLists(AttributeList(SingletonSeparatedList(GenerateXmlRootAttribute(element.QualifiedName))));
+
+                return c;
+            }
+
+            throw new InvalidOperationException();
         }
 
         /// <summary>
@@ -435,16 +484,6 @@ namespace Cogito.Xml.Serialization
         }
 
         /// <summary>
-        /// Generates the set of anonymous types for the given complex type.
-        /// </summary>
-        /// <param name="type"></param>
-        /// <returns></returns>
-        IEnumerable<ClassDeclarationSyntax> GenerateClassesForAnonymousTypes(XmlSchemaComplexType type)
-        {
-            yield break;
-        }
-
-        /// <summary>
         /// 
         /// </summary>
         /// <param name="type"></param>
@@ -453,7 +492,8 @@ namespace Cogito.Xml.Serialization
         {
             // generate properties for attributes
             foreach (var attribute in type.Attributes.Cast<XmlSchemaAttribute>())
-                yield return GeneratePropertyForAttribute(attribute);
+                foreach (var memeber in GenerateClassMembersForAttribute(attribute))
+                    yield return memeber;
 
             // generate properties for content
             foreach (var member in GenerateClassMembersForParticle(type.ContentTypeParticle))
@@ -465,9 +505,9 @@ namespace Cogito.Xml.Serialization
         /// </summary>
         /// <param name="attribute"></param>
         /// <returns></returns>
-        PropertyDeclarationSyntax GeneratePropertyForAttribute(XmlSchemaAttribute attribute)
+        IEnumerable<PropertyDeclarationSyntax> GenerateClassMembersForAttribute(XmlSchemaAttribute attribute)
         {
-            return GeneratePropertyOfType(attribute.Name, attribute.SchemaType);
+            yield return GeneratePropertyOfType(attribute.Name, attribute.SchemaType);
         }
 
         /// <summary>
@@ -495,7 +535,7 @@ namespace Cogito.Xml.Serialization
         /// <param name="identifier"></param>
         /// <param name="type"></param>
         /// <returns></returns>
-        PropertyDeclarationSyntax GenerateProperty(TypeSyntax type, string identifier)
+        PropertyDeclarationSyntax GenerateProperty(string identifier, TypeSyntax type)
         {
             return PropertyDeclaration(type, identifier)
                 .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
@@ -517,7 +557,7 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         PropertyDeclarationSyntax GeneratePropertyOfSimpleType(string identifier, XmlSchemaSimpleType type)
         {
-            return GenerateProperty(TypeOf(type), identifier);
+            return GenerateProperty(identifier, TypeOf(type));
         }
 
         /// <summary>
@@ -528,7 +568,7 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         PropertyDeclarationSyntax GeneratePropertyOfComplexType(string identifier, XmlSchemaComplexType type)
         {
-            return GenerateProperty(TypeOf(type), identifier);
+            return GenerateProperty(identifier, TypeOf(type));
         }
 
         /// <summary>
@@ -598,16 +638,36 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         IEnumerable<MemberDeclarationSyntax> GenerateClassMembersForElementParticle(XmlSchemaElement element)
         {
-            if (element.RefName.IsEmpty == false && element.ElementSchemaType != null)
-                yield return GenerateProperty(TypeOf(element.RefName), element.QualifiedName.Name)
+            // element is a reference to another global element
+            // property type is named after that element
+            if (element.RefName.IsEmpty == false)
+            {
+                yield return GenerateProperty(element.QualifiedName.Name, TypeOf(element.RefName))
                     .AddAttributeLists(AttributeList().AddAttributes(
                         GenerateXmlElementAttributeForProperty(element)));
-            else
+                yield break;
+            }
+
+            // element references an existing schema type
+            if (element.SchemaTypeName.IsEmpty == false)
+            {
                 yield return GeneratePropertyOfType(element.QualifiedName.Name, element.ElementSchemaType)
                     .AddAttributeLists(AttributeList().AddAttributes(
                         GenerateXmlElementAttributeForProperty(element)));
+                yield break;
+            }
 
-            // TODO check element to determine whether it needs an anonymous class generated for itsself, then use that as the property type
+            // element has nested schema type
+            if (element.SchemaType != null)
+            {
+                yield return GenerateClassForElement(element);
+                yield return GenerateProperty(element.QualifiedName.Name, ParseTypeName(element.QualifiedName.Name))
+                    .AddAttributeLists(AttributeList().AddAttributes(
+                        GenerateXmlElementAttributeForProperty(element)));
+                yield break;
+            }
+
+            throw new InvalidOperationException();
         }
 
         /// <summary>
@@ -676,7 +736,7 @@ namespace Cogito.Xml.Serialization
             return Attribute(IdentifierName(typeof(XmlTypeAttribute).FullName),
                 AttributeArgumentList().AddArguments(
                     AttributeArgument(NameEquals(IdentifierName(nameof(XmlTypeAttribute.TypeName))), null, StringLiteral(qname.Name)),
-                    AttributeArgument(NameEquals(IdentifierName(nameof(XmlTypeAttribute.Namespace))), null, StringLiteral(qname.Namespace))));
+                    !string.IsNullOrWhiteSpace(qname.Namespace) ? AttributeArgument(NameEquals(IdentifierName(nameof(XmlTypeAttribute.Namespace))), null, StringLiteral(qname.Namespace)) : null));
         }
 
         /// <summary>
