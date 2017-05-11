@@ -495,13 +495,20 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         IEnumerable<PropertyDeclarationSyntax> GeneratePropertiesForElement(XmlSchemaElement element)
         {
-            return GenerateProperty(element.QualifiedName.Name, element.ElementSchemaType)
-                .AddAttributeLists(AttributeList(SeparatedList(Attribute()))
+            yield return GenerateProperty(element.QualifiedName.Name, element.ElementSchemaType)
+                .AddAttributeLists(AttributeList().AddAttributes(
+                    GenerateXmlElementAttributeForProperty(element.Name)));
         }
 
+        /// <summary>
+        /// Generates a new <see cref="XmlElementAttribute"/> for a property.
+        /// </summary>
+        /// <param name="identifier"></param>
+        /// <returns></returns>
         AttributeSyntax GenerateXmlElementAttributeForProperty(string identifier)
         {
-
+            return Attribute(IdentifierName(typeof(XmlElementAttribute).FullName),
+                AttributeArgumentList());
         }
 
         /// <summary>
