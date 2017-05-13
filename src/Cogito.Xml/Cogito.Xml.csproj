@@ -158,6 +158,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="Cogito.Xml.nuspec" />
     <None Include="packages.config" />
     <None Include="README.md" />
   </ItemGroup>
