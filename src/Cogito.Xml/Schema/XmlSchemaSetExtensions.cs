@@ -18,7 +18,7 @@ namespace Cogito.Xml.Schema
         /// <param name="self"></param>
         /// <param name="name"></param>
         /// <returns></returns>
-        public static XmlSchemaType GetGlobalType(this XmlSchemaSet self, XmlQualifiedName name)
+        public static XmlSchemaType GetSchemaType(this XmlSchemaSet self, XmlQualifiedName name)
         {
             if (self == null)
                 throw new ArgumentNullException(nameof(self));
@@ -34,14 +34,14 @@ namespace Cogito.Xml.Schema
         /// <param name="self"></param>
         /// <param name="name"></param>
         /// <returns></returns>
-        public static XmlSchemaType GetGlobalType(this XmlSchemaSet self, XName name)
+        public static XmlSchemaType GetSchemaType(this XmlSchemaSet self, XName name)
         {
             if (self == null)
                 throw new ArgumentNullException(nameof(self));
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            return GetGlobalType(self, new XmlQualifiedName(name.LocalName, name.NamespaceName));
+            return GetSchemaType(self, new XmlQualifiedName(name.LocalName, name.NamespaceName));
         }
 
         /// <summary>
@@ -51,7 +51,7 @@ namespace Cogito.Xml.Schema
         /// <param name="name"></param>
         /// <param name="ns"></param>
         /// <returns></returns>
-        public static XmlSchemaType GetGlobalType(this XmlSchemaSet self, string name, string ns)
+        public static XmlSchemaType GetSchemaType(this XmlSchemaSet self, string name, string ns)
         {
             if (self == null)
                 throw new ArgumentNullException(nameof(self));
@@ -60,7 +60,7 @@ namespace Cogito.Xml.Schema
             if (ns == null)
                 throw new ArgumentNullException(nameof(ns));
 
-            return GetGlobalType(self, new XmlQualifiedName(name, ns));
+            return GetSchemaType(self, new XmlQualifiedName(name, ns));
         }
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace Cogito.Xml.Schema
         /// <param name="self"></param>
         /// <param name="name"></param>
         /// <returns></returns>
-        public static XmlSchemaElement GetGlobalElement(this XmlSchemaSet self, XmlQualifiedName name)
+        public static XmlSchemaElement GetSchemaElement(this XmlSchemaSet self, XmlQualifiedName name)
         {
             if (self == null)
                 throw new ArgumentNullException(nameof(self));
@@ -85,14 +85,14 @@ namespace Cogito.Xml.Schema
         /// <param name="self"></param>
         /// <param name="name"></param>
         /// <returns></returns>
-        public static XmlSchemaElement GetGlobalElement(this XmlSchemaSet self, XName name)
+        public static XmlSchemaElement GetSchemaElement(this XmlSchemaSet self, XName name)
         {
             if (self == null)
                 throw new ArgumentNullException(nameof(self));
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            return GetGlobalElement(self, new XmlQualifiedName(name.LocalName, name.NamespaceName));
+            return GetSchemaElement(self, new XmlQualifiedName(name.LocalName, name.NamespaceName));
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace Cogito.Xml.Schema
         /// <param name="name"></param>
         /// <param name="ns"></param>
         /// <returns></returns>
-        public static XmlSchemaElement GetGlobalElement(this XmlSchemaSet self, string name, string ns)
+        public static XmlSchemaElement GetSchemaElement(this XmlSchemaSet self, string name, string ns)
         {
             if (self == null)
                 throw new ArgumentNullException(nameof(self));
@@ -111,7 +111,7 @@ namespace Cogito.Xml.Schema
             if (ns == null)
                 throw new ArgumentNullException(nameof(ns));
 
-            return GetGlobalElement(self, new XmlQualifiedName(name, ns));
+            return GetSchemaElement(self, new XmlQualifiedName(name, ns));
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace Cogito.Xml.Schema
         /// <param name="self"></param>
         /// <param name="name"></param>
         /// <returns></returns>
-        public static XmlSchemaAttribute GetGlobalAttribute(this XmlSchemaSet self, XmlQualifiedName name)
+        public static XmlSchemaAttribute GetSchemaAttribute(this XmlSchemaSet self, XmlQualifiedName name)
         {
             if (self == null)
                 throw new ArgumentNullException(nameof(self));
@@ -136,14 +136,14 @@ namespace Cogito.Xml.Schema
         /// <param name="self"></param>
         /// <param name="name"></param>
         /// <returns></returns>
-        public static XmlSchemaAttribute GetGlobalAttribute(this XmlSchemaSet self, XName name)
+        public static XmlSchemaAttribute GetSchemaAttribute(this XmlSchemaSet self, XName name)
         {
             if (self == null)
                 throw new ArgumentNullException(nameof(self));
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            return GetGlobalAttribute(self, new XmlQualifiedName(name.LocalName, name.NamespaceName));
+            return GetSchemaAttribute(self, new XmlQualifiedName(name.LocalName, name.NamespaceName));
         }
 
         /// <summary>
@@ -153,7 +153,7 @@ namespace Cogito.Xml.Schema
         /// <param name="name"></param>
         /// <param name="ns"></param>
         /// <returns></returns>
-        public static XmlSchemaAttribute GetGlobalAttribute(this XmlSchemaSet self, string name, string ns)
+        public static XmlSchemaAttribute GetSchemaAttribute(this XmlSchemaSet self, string name, string ns)
         {
             if (self == null)
                 throw new ArgumentNullException(nameof(self));
@@ -162,7 +162,7 @@ namespace Cogito.Xml.Schema
             if (ns == null)
                 throw new ArgumentNullException(nameof(ns));
 
-            return GetGlobalAttribute(self, new XmlQualifiedName(name, ns));
+            return GetSchemaAttribute(self, new XmlQualifiedName(name, ns));
         }
 
     }

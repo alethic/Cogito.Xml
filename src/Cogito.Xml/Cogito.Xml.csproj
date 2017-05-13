@@ -150,6 +150,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Linq\XNameExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="XmlQualifiedNameExtensions.cs" />
     <Compile Include="Schema\XmlSchemaSetExtensions.cs" />
