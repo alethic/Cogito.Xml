@@ -9,8 +9,6 @@ using System.Xml.Linq;
 using System.Xml.Schema;
 using System.Xml.Serialization;
 
-using Cogito.Collections;
-
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -55,16 +53,8 @@ namespace Cogito.Xml.Serialization
         {
             Schemas = schemas ?? throw new ArgumentNullException(nameof(schemas));
 
-            AddKnownTypes();
-        }
-
-        /// <summary>
-        /// Adds any known serialization types.
-        /// </summary>
-        void AddKnownTypes()
-        {
-            foreach (var t in typeof(XmlSerializationCodeGenerator).Assembly.GetTypes())
-                AddType(t);
+            // add known types from this assembly
+            AddKnownTypes(typeof(XmlSerializationCodeGenerator).Assembly.GetTypes());
         }
 
         /// <summary>
@@ -116,17 +106,27 @@ namespace Cogito.Xml.Serialization
         }
 
         /// <summary>
-        /// Adds the given <see cref="Type"/> as an existing type.
+        /// Adds the given <see cref="Type"/> as a known type.
         /// </summary>
         /// <param name="type"></param>
-        public void AddType(Type type)
+        public void AddKnownType(Type type)
         {
-            var name = GetXNameForType(type);
+            var name = GetXNameForType(type ?? throw new ArgumentNullException(nameof(type)));
             if (name != null)
             {
                 xmlnsToClrNamespace[name.Namespace] = type.Namespace;
                 xmlnToClrType[name] = type;
             }
+        }
+
+        /// <summary>
+        /// Adds the given known types.
+        /// </summary>
+        /// <param name="types"></param>
+        public void AddKnownTypes(IEnumerable<Type> types)
+        {
+            foreach (var type in types ?? throw new ArgumentNullException(nameof(types)))
+                AddKnownType(type);
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         string ClrNamespaceForXmlns(XNamespace xmlns)
         {
-            return xmlnsToClrNamespace.GetOrDefault(xmlns.NamespaceName) ?? xmlns.NamespaceName;
+            return xmlnsToClrNamespace.TryGetValue(xmlns.NamespaceName, out string r) ? r : xmlns.NamespaceName;
         }
 
         /// <summary>
@@ -272,11 +272,10 @@ namespace Cogito.Xml.Serialization
         TypeSyntax TypeOf(XmlQualifiedName name)
         {
             // type mapped
-            var type = xmlnToClrType.GetOrDefault(name.AsXName());
-            if (type != null)
+            if (xmlnToClrType.TryGetValue(name.AsXName(), out Type type))
                 return TypeSyntax(type);
-
-            return ParseTypeName(ClrNamespaceForXmlns(name.Namespace) + "." + name.Name);
+            else
+                return ParseTypeName(ClrNamespaceForXmlns(name.Namespace) + "." + name.Name);
         }
 
         /// <summary>
