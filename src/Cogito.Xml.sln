@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.26403.7
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cogito.Xml.Serialization", "Cogito.Xml.Serialization\Cogito.Xml.Serialization.csproj", "{F67045B0-D495-48CF-826A-1633784D7C55}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cogito.Xml", "Cogito.Xml\Cogito.Xml.csproj", "{F67045B0-D495-48CF-826A-1633784D7C55}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cogito.Xml.Serialization.Tests", "Cogito.Xml.Serialization.Tests\Cogito.Xml.Serialization.Tests.csproj", "{A3B4AFBB-C88F-436B-A557-14BC29DA9DD3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cogito.Xml.Tests", "Cogito.Xml.Tests\Cogito.Xml.Tests.csproj", "{A3B4AFBB-C88F-436B-A557-14BC29DA9DD3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

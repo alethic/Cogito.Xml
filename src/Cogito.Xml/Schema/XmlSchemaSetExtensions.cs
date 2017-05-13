@@ -1,10 +1,14 @@
-﻿using System.Xml;
+﻿using System;
+using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
 
-namespace Cogito.Xml.Serialization
+namespace Cogito.Xml.Schema
 {
 
+    /// <summary>
+    /// Provides extension methods for working with <see cref="XmlSchemaSet"/> instances.
+    /// </summary>
     public static class XmlSchemaSetExtensions
     {
 
@@ -16,6 +20,11 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         public static XmlSchemaType GetGlobalType(this XmlSchemaSet self, XmlQualifiedName name)
         {
+            if (self == null)
+                throw new ArgumentNullException(nameof(self));
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
             return (XmlSchemaType)self.GlobalTypes[name];
         }
 
@@ -27,6 +36,11 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         public static XmlSchemaType GetGlobalType(this XmlSchemaSet self, XName name)
         {
+            if (self == null)
+                throw new ArgumentNullException(nameof(self));
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
             return GetGlobalType(self, new XmlQualifiedName(name.LocalName, name.NamespaceName));
         }
 
@@ -39,6 +53,13 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         public static XmlSchemaType GetGlobalType(this XmlSchemaSet self, string name, string ns)
         {
+            if (self == null)
+                throw new ArgumentNullException(nameof(self));
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+            if (ns == null)
+                throw new ArgumentNullException(nameof(ns));
+
             return GetGlobalType(self, new XmlQualifiedName(name, ns));
         }
 
@@ -50,6 +71,11 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         public static XmlSchemaElement GetGlobalElement(this XmlSchemaSet self, XmlQualifiedName name)
         {
+            if (self == null)
+                throw new ArgumentNullException(nameof(self));
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
             return (XmlSchemaElement)self.GlobalElements[name];
         }
 
@@ -61,6 +87,11 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         public static XmlSchemaElement GetGlobalElement(this XmlSchemaSet self, XName name)
         {
+            if (self == null)
+                throw new ArgumentNullException(nameof(self));
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
             return GetGlobalElement(self, new XmlQualifiedName(name.LocalName, name.NamespaceName));
         }
 
@@ -73,6 +104,13 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         public static XmlSchemaElement GetGlobalElement(this XmlSchemaSet self, string name, string ns)
         {
+            if (self == null)
+                throw new ArgumentNullException(nameof(self));
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+            if (ns == null)
+                throw new ArgumentNullException(nameof(ns));
+
             return GetGlobalElement(self, new XmlQualifiedName(name, ns));
         }
 
@@ -84,6 +122,11 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         public static XmlSchemaAttribute GetGlobalAttribute(this XmlSchemaSet self, XmlQualifiedName name)
         {
+            if (self == null)
+                throw new ArgumentNullException(nameof(self));
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
             return (XmlSchemaAttribute)self.GlobalTypes[name];
         }
 
@@ -95,6 +138,11 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         public static XmlSchemaAttribute GetGlobalAttribute(this XmlSchemaSet self, XName name)
         {
+            if (self == null)
+                throw new ArgumentNullException(nameof(self));
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
             return GetGlobalAttribute(self, new XmlQualifiedName(name.LocalName, name.NamespaceName));
         }
 
@@ -107,6 +155,13 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         public static XmlSchemaAttribute GetGlobalAttribute(this XmlSchemaSet self, string name, string ns)
         {
+            if (self == null)
+                throw new ArgumentNullException(nameof(self));
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+            if (ns == null)
+                throw new ArgumentNullException(nameof(ns));
+
             return GetGlobalAttribute(self, new XmlQualifiedName(name, ns));
         }
 

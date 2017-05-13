@@ -8,8 +8,9 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
 using System.Xml.Serialization;
+
 using Cogito.Collections;
-using Cogito.Linq;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -22,7 +23,7 @@ namespace Cogito.Xml.Serialization
     /// <summary>
     /// Provides methods for generating code from XML schema that utilizes the <see cref="XmlSerializer"/>.
     /// </summary>
-    public class XmlSerializerCodeGenerator
+    public class XmlSerializationCodeGenerator
     {
 
         static readonly HashSet<XNamespace> SYSTEM_XMLNS = new HashSet<XNamespace>(new XNamespace[]
@@ -50,9 +51,20 @@ namespace Cogito.Xml.Serialization
         /// Initializes a new instance.
         /// </summary>
         /// <param name="schemas"></param>
-        public XmlSerializerCodeGenerator(XmlSchemaSet schemas)
+        public XmlSerializationCodeGenerator(XmlSchemaSet schemas)
         {
             Schemas = schemas ?? throw new ArgumentNullException(nameof(schemas));
+
+            AddKnownTypes();
+        }
+
+        /// <summary>
+        /// Adds any known serialization types.
+        /// </summary>
+        void AddKnownTypes()
+        {
+            foreach (var t in typeof(XmlSerializationCodeGenerator).Assembly.GetTypes())
+                AddType(t);
         }
 
         /// <summary>
@@ -111,7 +123,10 @@ namespace Cogito.Xml.Serialization
         {
             var name = GetXNameForType(type);
             if (name != null)
+            {
+                xmlnsToClrNamespace[name.Namespace] = type.Namespace;
                 xmlnToClrType[name] = type;
+            }
         }
 
         /// <summary>
@@ -256,6 +271,11 @@ namespace Cogito.Xml.Serialization
         /// <returns></returns>
         TypeSyntax TypeOf(XmlQualifiedName name)
         {
+            // type mapped
+            var type = xmlnToClrType.GetOrDefault(name.AsXName());
+            if (type != null)
+                return TypeSyntax(type);
+
             return ParseTypeName(ClrNamespaceForXmlns(name.Namespace) + "." + name.Name);
         }
 
@@ -290,6 +310,8 @@ namespace Cogito.Xml.Serialization
                 case XmlTypeCode.NormalizedString:
                 case XmlTypeCode.Token:
                 case XmlTypeCode.Name:
+                case XmlTypeCode.NCName:
+                case XmlTypeCode.Language:
                 case XmlTypeCode.Id:
                 case XmlTypeCode.Idref:
                     return TypeSyntax<string>();
@@ -323,6 +345,8 @@ namespace Cogito.Xml.Serialization
                 case XmlTypeCode.Date:
                 case XmlTypeCode.DateTime:
                     return TypeSyntax<DateTime>();
+                case XmlTypeCode.AnyUri:
+                    return TypeSyntax<Uri>();
                 case XmlTypeCode.QName:
                     return TypeSyntax<XName>();
                 case XmlTypeCode.None:
@@ -392,10 +416,7 @@ namespace Cogito.Xml.Serialization
 
             // named type
             if (type.QualifiedName.IsEmpty == false)
-            {
                 c = c.AddAttributeLists(AttributeList(SingletonSeparatedList(GenerateXmlTypeAttribute(type.QualifiedName))));
-                c = c.AddMembers(GenerateClassTypeNameField(type.QualifiedName));
-            }
 
             // properties of type
             c = c.AddMembers(GenerateClassMembersForComplexType(type).ToArray());
@@ -425,24 +446,31 @@ namespace Cogito.Xml.Serialization
         }
 
         /// <summary>
-        /// Generates the static typeName field.
+        /// Generates a new class for the given attribute.
         /// </summary>
-        /// <param name="name"></param>
+        /// <param name="identifier"></param>
+        /// <param name="attribute"></param>
         /// <returns></returns>
-        public FieldDeclarationSyntax GenerateClassTypeNameField(XmlQualifiedName name)
+        public ClassDeclarationSyntax GenerateClassForAttribute(XmlSchemaAttribute attribute)
         {
-            return FieldDeclaration(VariableDeclaration(
-                    TypeSyntax<XmlQualifiedName>(),
-                    SeparatedList<VariableDeclaratorSyntax>().Add(
-                        VariableDeclarator(Identifier("typeName"))
-                            .WithInitializer(EqualsValueClause(
-                                ObjectCreationExpression(
-                                    TypeSyntax<XmlQualifiedName>(),
-                                    ArgumentList()
-                                        .AddArguments(Argument(StringLiteral(name.Name)))
-                                        .AddArguments(Argument(StringLiteral(name.Namespace))),
-                                    null))))))
-                .WithModifiers(TokenList(Token(SyntaxKind.StaticKeyword), Token(SyntaxKind.ReadOnlyKeyword)));
+            // element references another type
+            if (attribute.SchemaType == null && attribute.SchemaTypeName.IsEmpty == false)
+                return GenerateClassForType(attribute.AttributeSchemaType)
+                    .WithIdentifier(Identifier(attribute.Name));
+
+            // element defines  type
+            if (attribute.SchemaType != null && attribute.SchemaTypeName.IsEmpty)
+            {
+                var c = GenerateClassForType(attribute.SchemaType)
+                    .WithIdentifier(Identifier(attribute.Name));
+
+                if (!string.IsNullOrEmpty(attribute.QualifiedName.Namespace))
+                    c = c.AddAttributeLists(AttributeList(SingletonSeparatedList(GenerateXmlRootAttribute(attribute.QualifiedName))));
+
+                return c;
+            }
+
+            throw new InvalidOperationException();
         }
 
         /// <summary>
@@ -484,15 +512,25 @@ namespace Cogito.Xml.Serialization
         }
 
         /// <summary>
-        /// 
+        /// Generates new class members for the given complex type.
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
         IEnumerable<MemberDeclarationSyntax> GenerateClassMembersForComplexType(XmlSchemaComplexType type)
         {
             // generate properties for attributes
-            foreach (var attribute in type.Attributes.Cast<XmlSchemaAttribute>())
-                foreach (var memeber in GenerateClassMembersForAttribute(attribute))
+            foreach (var attribute in type.Attributes.OfType<XmlSchemaAttribute>())
+                foreach (var member in GenerateClassMembersForAttribute(attribute))
+                    yield return member;
+
+            // generate properties for attribute groups
+            foreach (var attributeGroup in type.Attributes.OfType<XmlSchemaAttributeGroup>())
+                foreach (var memeber in GenerateClassMembersForAttributeGroup(attributeGroup))
+                    yield return memeber;
+
+            // generate properties for attribute groups
+            foreach (var attributeGroupRef in type.Attributes.OfType<XmlSchemaAttributeGroupRef>())
+                foreach (var memeber in GenerateClassMembersForAttributeGroupRef(attributeGroupRef))
                     yield return memeber;
 
             // generate properties for content
@@ -501,13 +539,83 @@ namespace Cogito.Xml.Serialization
         }
 
         /// <summary>
+        /// Generates new class members for the given attribute group.
+        /// </summary>
+        /// <param name="attributeGroup"></param>
+        /// <returns></returns>
+        IEnumerable<MemberDeclarationSyntax> GenerateClassMembersForAttributeGroup(XmlSchemaAttributeGroup attributeGroup)
+        {
+            // generate properties for attributes
+            foreach (var i in attributeGroup.Attributes.OfType<XmlSchemaAttribute>())
+                foreach (var m in GenerateClassMembersForAttribute(i))
+                    yield return m;
+
+            // generate properties for attribute groups
+            foreach (var i in attributeGroup.Attributes.OfType<XmlSchemaAttributeGroup>())
+                foreach (var m in GenerateClassMembersForAttributeGroup(i))
+                    yield return m;
+
+            // generate properties for attribute groups
+            foreach (var i in attributeGroup.Attributes.OfType<XmlSchemaAttributeGroupRef>())
+                foreach (var m in GenerateClassMembersForAttributeGroupRef(i))
+                    yield return m;
+        }
+
+        /// <summary>
+        /// Generates new class members for the given attribute group.
+        /// </summary>
+        /// <param name="attributeGroupRef"></param>
+        /// <returns></returns>
+        IEnumerable<MemberDeclarationSyntax> GenerateClassMembersForAttributeGroupRef(XmlSchemaAttributeGroupRef attributeGroupRef)
+        {
+            var group = Schemas.Schemas(attributeGroupRef.RefName.Namespace)
+                .Cast<XmlSchema>()
+                .Select(i => (XmlSchemaAttributeGroup)i.AttributeGroups[attributeGroupRef.RefName])
+                .FirstOrDefault();
+            if (group != null)
+                foreach (var member in GenerateClassMembersForAttributeGroup(group))
+                    yield return member;
+
+            yield break;
+        }
+
+        /// <summary>
         /// Generates a new property that corresponds with the given attribute.
         /// </summary>
         /// <param name="attribute"></param>
         /// <returns></returns>
-        IEnumerable<PropertyDeclarationSyntax> GenerateClassMembersForAttribute(XmlSchemaAttribute attribute)
+        IEnumerable<MemberDeclarationSyntax> GenerateClassMembersForAttribute(XmlSchemaAttribute attribute)
         {
-            yield return GeneratePropertyOfType(attribute.Name, attribute.SchemaType);
+            // attribute is a reference to another global attribute
+            // property type is named after that attribute
+            if (attribute.RefName.IsEmpty == false)
+            {
+                yield return GenerateProperty(attribute.QualifiedName.Name, TypeOf(attribute.RefName))
+                    .AddAttributeLists(AttributeList().AddAttributes(
+                        GenerateXmlAttributeAttributeForProperty(attribute)));
+                yield break;
+            }
+
+            // attribute references an existing schema type
+            if (attribute.SchemaTypeName.IsEmpty == false)
+            {
+                yield return GeneratePropertyOfType(attribute.QualifiedName.Name, attribute.AttributeSchemaType)
+                    .AddAttributeLists(AttributeList().AddAttributes(
+                        GenerateXmlAttributeAttributeForProperty(attribute)));
+                yield break;
+            }
+
+            // attribute has nested schema type
+            if (attribute.SchemaType != null)
+            {
+                yield return GenerateClassForAttribute(attribute);
+                yield return GenerateProperty(attribute.QualifiedName.Name, ParseTypeName(attribute.QualifiedName.Name))
+                    .AddAttributeLists(AttributeList().AddAttributes(
+                        GenerateXmlAttributeAttributeForProperty(attribute)));
+                yield break;
+            }
+
+            throw new InvalidOperationException();
         }
 
         /// <summary>
@@ -602,6 +710,8 @@ namespace Cogito.Xml.Serialization
                     return GenerateClassMembersForAnyParticle(any);
                 case XmlSchemaSequence sequence:
                     return GenerateClassMembersForSequenceParticle(sequence);
+                case XmlSchemaChoice choice:
+                    return GenerateClassMembersForChoiceParticle(choice);
                 case XmlSchemaElement element:
                     return GenerateClassMembersForElementParticle(element);
                 case XmlSchemaParticle p when p.GetType().Name == "EmptyParticle":
@@ -671,6 +781,19 @@ namespace Cogito.Xml.Serialization
         }
 
         /// <summary>
+        /// Generates a new <see cref="XmlAttributeAttribute"/> for a property.
+        /// </summary>
+        /// <param name="identifier"></param>
+        /// <returns></returns>
+        AttributeSyntax GenerateXmlAttributeAttributeForProperty(XmlSchemaAttribute attribute)
+        {
+            return Attribute(IdentifierName(typeof(XmlAttributeAttribute).FullName),
+                AttributeArgumentList().AddArguments(
+                    AttributeArgument(NameEquals(IdentifierName(nameof(XmlAttributeAttribute.AttributeName))), null, StringLiteral(attribute.QualifiedName.Name)),
+                    !string.IsNullOrEmpty(attribute.QualifiedName.Namespace) ? AttributeArgument(NameEquals(IdentifierName(nameof(XmlAttributeAttribute.Namespace))), null, StringLiteral(attribute.QualifiedName.Namespace)) : null));
+        }
+
+        /// <summary>
         /// Generates a new <see cref="XmlElementAttribute"/> for a property.
         /// </summary>
         /// <param name="identifier"></param>
@@ -691,6 +814,18 @@ namespace Cogito.Xml.Serialization
         IEnumerable<MemberDeclarationSyntax> GenerateClassMembersForSequenceParticle(XmlSchemaSequence sequence)
         {
             foreach (XmlSchemaObject o in sequence.Items)
+                foreach (var m in GenerateClassMembersForObject(o))
+                    yield return m;
+        }
+
+        /// <summary>
+        /// Generates new properties for the given choice.
+        /// </summary>
+        /// <param name="choice"></param>
+        /// <returns></returns>
+        IEnumerable<MemberDeclarationSyntax> GenerateClassMembersForChoiceParticle(XmlSchemaChoice choice)
+        {
+            foreach (XmlSchemaObject o in choice.Items)
                 foreach (var m in GenerateClassMembersForObject(o))
                     yield return m;
         }

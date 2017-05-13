@@ -1,12 +1,13 @@
-﻿using System.CodeDom;
-using System.Xml;
+﻿using System.IO;
 using System.Xml.Linq;
 using System.Xml.Schema;
 using System.Xml.Serialization;
+using Cogito.Xml.Serialization;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Cogito.Xml.Serialization.Tests
+namespace Cogito.Xml.Tests
 {
 
     [TestClass]
@@ -109,21 +110,33 @@ namespace Cogito.Xml.Serialization.Tests
         }
 
         [TestMethod]
+        public void Test_genericode()
+        {
+            var s = new XmlSchemaSet();
+            s.Add(XmlSchema.Read(File.OpenRead(@"xsd\genericode\xml.xsd"), Validation));
+            s.Add(XmlSchema.Read(File.OpenRead(@"xsd\genericode\genericode.xsd"), Validation));
+            s.Compile();
+            var g = new XmlSerializationCodeGenerator(s);
+            g.MapNamespace("http://docs.oasis-open.org/codelist/ns/genericode/1.0/", "Genericode");
+            var c = g.GenerateCode();
+            var t = c.NormalizeWhitespace().ToFullString();
+        }
+
+        [TestMethod]
         public void Test_can_get_qname_for_type()
         {
-            Assert.IsTrue(XmlSerializerCodeGenerator.GetXNameForType(typeof(FooType)) == ns + "FooType");
+            Assert.IsTrue(XmlSerializationCodeGenerator.GetXNameForType(typeof(FooType)) == ns + "FooType");
         }
 
         [TestMethod]
         public void Test_can_generate_code()
         {
-            var g = new XmlSerializerCodeGenerator(LoadSchemaSet());
+            var g = new XmlSerializationCodeGenerator(LoadSchemaSet());
             g.MapNamespace(ns, "GeneratedCode");
             var c = g.GenerateCode();
             var t = c.NormalizeWhitespace().ToFullString();
-            }
+        }
 
-    }   
+    }
 
 }
-    
